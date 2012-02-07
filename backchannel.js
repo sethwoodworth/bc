@@ -1,4 +1,6 @@
 var io = require( 'socket.io' );
+var mongoose = require( '../models.js' ).mongoose;
+var Lecture = mongoose.model( 'Lecture' );
 
 module.exports = function(app, external_io, methods) {
   
@@ -17,7 +19,12 @@ var backchannel = io
     socket.join(lecture);
     methods.subscribe(lecture, function(posts) {
       if (socket.handshake.user) {
-        cb(posts);
+        Lecture.findOne({'_id': lecture}, function(err, lect) {
+          // This also passes the courseId on to backchannel to selectively turn off comments
+          // FIXME: ideally this would be a part of the Lecture/Course schema
+          var packet = {'posts':posts,'toggle':lect.course};
+          cb(packet);
+        });
       } else {
         var posts = posts.filter(function(post) {
           if (post.public) {
